@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Видеоплеер</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { padding: 2rem; }
+        #video-container { max-width: 800px; margin: auto; }
+        video { width: 100%; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1 class="text-center mb-4">Видеоплеер</h1>
+    <div id="video-container">
+        <video id="video" controls></video>
+        <div id="status" class="mt-3 text-center"></div>
+    </div>
+    <div class="mt-2">
+        <label>Качество:</label>
+        <select id="qualitySelector" class="form-select form-select-sm w-auto d-inline-block">
+            <option value="auto">Авто</option>
+        </select>
+    </div>
+    <div class="text-center mt-3">
+        <input type="text" id="videoIdInput" class="form-control w-50 mx-auto" placeholder="Введите ID видео">
+        <button onclick="loadVideo()" class="btn btn-primary mt-2">Загрузить видео</button>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.17/dist/hls.min.js"></script>
+<script>
+    if (!localStorage.getItem('jwt')) {
+        window.location.href = '/login.html';
+    }
+
+    async function loadVideo() {
+        const videoId = document.getElementById('videoIdInput').value.trim();
+        if (!videoId) {
+            document.getElementById('status').textContent = '⚠️ Введите ID видео';
+            return;
+        }
+        const token = localStorage.getItem('jwt');
+        if (!token) {
+            document.getElementById('status').textContent = '⚠️ Токен не найден. Зарегистрируйтесь или войдите.';
+            return;
+        }
+        try {
+            const res = await fetch('/api/stream/' + videoId + '/playlist-url', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                document.getElementById('status').textContent = '❌ ' + (data.error || 'Ошибка');
+                return;
+            }
+            const video = document.getElementById('video');
+            const playlistUrl = data.playlistUrl;
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(playlistUrl);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function(event, data) {
+                    const levels = hls.levels;
+                    const selector = document.getElementById('qualitySelector');
+                    levels.forEach((level, index) => {
+                        const option = document.createElement('option');
+                        option.value = index;
+                        option.textContent = level.height + 'p';
+                        selector.appendChild(option);
+                    });
+                    selector.addEventListener('change', function() {
+                        const level = parseInt(this.value);
+                        if (isNaN(level)) {
+                            hls.currentLevel = -1; // авто
+                        } else {
+                            hls.currentLevel = level;
+                        }
+                    });
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = playlistUrl;
+                video.addEventListener('loadedmetadata', function() {
+                    video.play();
+                });
+            }
+            document.getElementById('status').textContent = '✅ Загружено';
+        } catch (e) {
+            document.getElementById('status').textContent = '❌ Ошибка: ' + e.message;
+        }
+    }
+    // Загружаем видео по ID из URL-параметра ?id=...
+    window.onload = function() {
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+        if (id) {
+            document.getElementById('videoIdInput').value = id;
+            loadVideo();
+        }
+    };
+
+
+</script>
+</body>
+</html>

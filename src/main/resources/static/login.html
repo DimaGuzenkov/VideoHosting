@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Видеосервис - Вход</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body { background: #f8f9fa; padding-top: 4rem; }
+        .card { border-radius: 1rem; box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1); }
+        .card-header { background: #0d6efd; color: white; border-radius: 1rem 1rem 0 0 !important; font-weight: 600; }
+        .btn-primary { background: #0d6efd; border: none; }
+        .btn-primary:hover { background: #0b5ed7; }
+        .token-status { font-size: 0.9rem; color: #6c757d; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <h1 class="text-center mb-4"><i class="bi bi-play-circle"></i> Видеосервис</h1>
+
+            <!-- Карточка входа -->
+            <div class="card mb-4">
+                <div class="card-header"><i class="bi bi-box-arrow-in-right"></i> Вход</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <input id="loginUsername" class="form-control" placeholder="Имя пользователя">
+                    </div>
+                    <div class="mb-3">
+                        <input id="loginPassword" class="form-control" type="password" placeholder="Пароль">
+                    </div>
+                    <button onclick="login()" class="btn btn-primary w-100"><i class="bi bi-key"></i> Войти</button>
+                    <div id="loginMessage" class="mt-2 text-center text-danger"></div>
+                </div>
+            </div>
+
+            <!-- Карточка регистрации -->
+            <div class="card">
+                <div class="card-header"><i class="bi bi-person-plus"></i> Регистрация</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <input id="regUsername" class="form-control" placeholder="Имя пользователя">
+                    </div>
+                    <div class="mb-3">
+                        <input id="regEmail" class="form-control" placeholder="Email">
+                    </div>
+                    <div class="mb-3">
+                        <input id="regPassword" class="form-control" type="password" placeholder="Пароль (минимум 6 символов)">
+                    </div>
+                    <button onclick="register()" class="btn btn-primary w-100"><i class="bi bi-person-add"></i> Зарегистрироваться</button>
+                    <div id="regMessage" class="mt-2 text-center text-danger"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    function setToken(token) { localStorage.setItem('jwt', token); }
+    function getToken() { return localStorage.getItem('jwt'); }
+    function redirectToDashboard() { window.location.href = '/dashboard.html'; }
+
+    if (getToken()) { redirectToDashboard(); }
+
+    async function login() {
+        const username = document.getElementById('loginUsername').value.trim();
+        const password = document.getElementById('loginPassword').value.trim();
+        const msg = document.getElementById('loginMessage');
+        if (!username || !password) { msg.textContent = 'Заполните все поля'; return; }
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setToken(data.token);
+                msg.textContent = '';
+                redirectToDashboard();
+            } else {
+                msg.textContent = 'Ошибка: ' + (data.error || JSON.stringify(data));
+            }
+        } catch (e) { msg.textContent = 'Ошибка сети: ' + e.message; }
+    }
+
+    async function register() {
+        const username = document.getElementById('regUsername').value.trim();
+        const email = document.getElementById('regEmail').value.trim();
+        const password = document.getElementById('regPassword').value.trim();
+        const msg = document.getElementById('regMessage');
+        if (!username || !email || !password) { msg.textContent = 'Заполните все поля'; return; }
+        try {
+            const res = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, email, password })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setToken(data.token);
+                msg.textContent = '';
+                redirectToDashboard();
+            } else {
+                msg.textContent = 'Ошибка: ' + (data.error || JSON.stringify(data));
+            }
+        } catch (e) { msg.textContent = 'Ошибка сети: ' + e.message; }
+    }
+</script>
+</body>
+</html>
