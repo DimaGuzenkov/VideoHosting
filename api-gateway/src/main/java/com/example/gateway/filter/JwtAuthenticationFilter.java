@@ -27,6 +27,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     @Value("${jwt.secret}")
     private String secret;
 
+    private final JwtTokenProvider tokenProvider;
+
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
@@ -37,7 +39,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         String path = request.getPath().value();
 
         // Пропускаем /auth/** без проверки
-        if (path.startsWith("/auth/")) {
+        if (path.startsWith("/api/auth/") || isStatic(path)) {
             return chain.filter(exchange);
         }
 
@@ -51,18 +53,14 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         String token = authHeader.substring(7);
         try {
-            Claims claims = Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(token)
-                    .getPayload();
+            Long userId = tokenProvider.getUserIdFromToken(token);
 
-            String username = claims.getSubject();
-            log.debug("Authenticated user: {}", username);
+//            String username = claims.getSubject();
+//            log.debug("Authenticated user: {}", username);
 
             // Добавляем заголовок X-User-Id для downstream
             ServerHttpRequest mutatedRequest = request.mutate()
-                    .header("X-User-Id", username)
+                    .header("X-User-Id", userId.toString())
                     .build();
 
             return chain.filter(exchange.mutate().request(mutatedRequest).build());
@@ -73,8 +71,19 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
     }
 
+    private boolean isStatic(String path) {
+        return path.endsWith(".html") ||
+                path.endsWith(".css") ||
+                path.endsWith(".js") ||
+                path.endsWith(".ico") ||
+                path.endsWith(".png") ||
+                path.endsWith(".jpg") ||
+                path.endsWith(".svg") ||
+                path.endsWith(".webmanifest");
+    }
+
     @Override
     public int getOrder() {
-        return -1; // выполняем до остальных фильтров
+        return -1;
     }
 }

@@ -1,8 +1,8 @@
 package com.example.auth.service;
 
 import com.example.auth.dto.AuthRequest;
-import com.example.auth.dto.RegisterRequest;
 import com.example.auth.dto.AuthResponse;
+import com.example.auth.dto.RegisterRequest;
 import com.example.auth.model.Role;
 import com.example.auth.model.User;
 import com.example.auth.repository.UserRepository;
@@ -27,7 +27,6 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
 
     public AuthResponse register(RegisterRequest request) {
-        // Проверка, что username и email свободны
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new RuntimeException("Username already taken");
         }
@@ -46,14 +45,7 @@ public class AuthService {
 
         user = userRepository.save(user);
 
-        // Генерация токена для нового пользователя
-        UserDetails userDetails = new org.springframework.security.core.userdetails.User(
-                user.getUsername(),
-                user.getPassword(),
-                user.getAuthorities()
-        );
-        String token = tokenProvider.generateToken(userDetails);
-
+        String token = tokenProvider.generateToken(user);
         return new AuthResponse(token, user.getUsername(), user.getRole().name());
     }
 
@@ -63,11 +55,10 @@ public class AuthService {
         );
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String token = tokenProvider.generateToken(userDetails);
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // Достаём роль из UserDetails (можно и из БД)
-        String role = userDetails.getAuthorities().iterator().next().getAuthority();
-
-        return new AuthResponse(token, userDetails.getUsername(), role);
+        String token = tokenProvider.generateToken(user);
+        return new AuthResponse(token, user.getUsername(), user.getRole().name());
     }
 }
