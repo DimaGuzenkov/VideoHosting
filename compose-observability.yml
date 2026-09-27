@@ -1,0 +1,36 @@
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    profiles: [ monitoring ]
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on: [ prometheus ]
+    profiles: [ monitoring ]
+
+  k6:
+    image: grafana/k6:latest
+    container_name: k6-load-tester
+    volumes:
+      - ./k6-scripts:/scripts
+      - ./k6-results:/results
+    command: run /scripts/test.js
+    profiles:
+      - load-testing
+    depends_on:
+      - api-gateway
+
+volumes:
+  prometheus_data:
+  grafana_data:
