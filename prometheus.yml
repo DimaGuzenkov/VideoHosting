@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: 'spring'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets:
+          - 'api-gateway:8080'
+          - 'auth-service:8080'
+          - 'upload-service:8080'
+          - 'stream-service:8080'
+          - 'processor-service:8080'

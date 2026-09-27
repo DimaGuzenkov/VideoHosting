@@ -1,0 +1,85 @@
+services:
+  auth-service:
+    image: eclipse-temurin:17-jre-alpine
+    container_name: auth-service
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+    env_file:
+      - env/.env.common
+      - env/.env.auth
+      - env/.env.jwt
+    volumes:
+      - ./auth-service/target/auth-service-0.0.1-SNAPSHOT.jar:/app.jar
+    command: [ "java", "-jar", "/app.jar" ]
+    restart: unless-stopped
+
+  api-gateway:
+    image: eclipse-temurin:17-jre-alpine
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - auth-service
+    env_file:
+      - env/.env.common
+      - env/.env.jwt
+    volumes:
+      - ./api-gateway/target/api-gateway-0.0.1-SNAPSHOT.jar:/app.jar
+    command: [ "java", "-jar", "/app.jar" ]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  upload-service:
+    image: eclipse-temurin:17-jre-alpine
+    container_name: upload-service
+    ports:
+      - "8082:8080"
+    depends_on:
+      - postgres
+      - minio
+      - kafka
+    env_file:
+      - env/.env.common
+      - env/.env.upload
+      - env/.env.event
+    volumes:
+      - ./upload-service/target/upload-service-0.0.1-SNAPSHOT.jar:/app.jar
+    command: [ "java", "-jar", "/app.jar" ]
+
+  stream-service:
+    image: eclipse-temurin:17-jre-alpine
+    container_name: stream-service
+    ports:
+      - "8086:8080"
+    depends_on:
+      - postgres
+      - minio
+    env_file:
+      - env/.env.common
+      - env/.env.stream
+    volumes:
+      - ./stream-service/target/stream-service-0.0.1-SNAPSHOT.jar:/app.jar
+    command: [ "java", "-jar", "/app.jar" ]
+
+  processor-service:
+    build: ./processor-service
+    container_name: processor-service
+    ports:
+      - "8084:8080"
+    depends_on:
+      - kafka
+      - minio
+      - schema-registry
+    env_file:
+      - env/.env.common
+      - env/.env.processor
+      - env/.env.event
+    volumes:
+      - ./processor-service/target/processor-service-0.0.1-SNAPSHOT.jar:/app.jar
+    command: [ "java", "-jar", "/app.jar" ]
