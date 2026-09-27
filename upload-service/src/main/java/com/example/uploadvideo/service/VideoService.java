@@ -68,7 +68,6 @@ public class VideoService {
 
     @Transactional
     public void deleteVideo(Long id) {
-        Video video = getVideoById(id);
-        videoRepository.delete(video);
+        videoRepository.deleteById(id);
     }
 }

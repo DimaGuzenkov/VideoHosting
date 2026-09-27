@@ -1,4 +1,4 @@
-package com.example.processor.config;
+package com.example.processor.storage;
 
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;

@@ -1,0 +1,10 @@
+{
+  "type": "record",
+  "name": "VideoUploadedEvent",
+  "namespace": "com.example.avro",
+  "fields": [
+    { "name": "videoId", "type": "long" },
+    { "name": "filePath", "type": "string" },
+    { "name": "userId", "type": "long" }
+  ]
+}

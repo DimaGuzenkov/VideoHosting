@@ -1,0 +1,35 @@
+body {
+    background: #f8f9fa;
+}
+
+.card {
+    border-radius: 1rem;
+    box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.1);
+}
+
+.card-header {
+    background: #0d6efd;
+    color: white;
+    border-radius: 1rem 1rem 0 0 !important;
+    font-weight: 600;
+}
+
+.btn-primary {
+    background: #0d6efd;
+    border: none;
+}
+
+.btn-primary:hover {
+    background: #0b5ed7;
+}
+
+#output,
+#videoListStatus,
+#uploadStatus {
+    margin-top: 0.5rem;
+}
+
+.token-status {
+    font-size: 0.9rem;
+    color: #6c757d;
+}
