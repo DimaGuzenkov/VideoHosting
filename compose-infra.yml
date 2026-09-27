@@ -16,6 +16,25 @@ services:
       timeout: 5s
       retries: 5
 
+  postgres-processor:
+    image: postgres:16-alpine
+    container_name: video-postgres-processor
+    environment:
+      POSTGRES_DB: processor_db
+      POSTGRES_USER: processor_user
+      POSTGRES_PASSWORD: processor_pass
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_processor_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U processor_user -d processor_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
   minio:
     image: minio/minio:latest
     container_name: video-minio
@@ -92,6 +111,7 @@ services:
 
 volumes:
   postgres_data:
+  postgres_processor_data:
   minio_data:
   redis_data:
   kafka_data:
