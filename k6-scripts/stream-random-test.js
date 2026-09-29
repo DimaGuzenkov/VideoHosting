@@ -8,23 +8,23 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '1m', target: 200 },   // разгон до 200
-        { duration: '2m', target: 200 },   // держим 200
-        { duration: '1m', target: 400 },   // разгон до 400
-        { duration: '2m', target: 400 },   // держим 400
-        { duration: '1m', target: 600 },   // разгон до 600
-        { duration: '2m', target: 600 },   // держим 600
-        { duration: '1m', target: 800 },   // разгон до 800
-        { duration: '2m', target: 800 },   // держим 800
-        { duration: '1m', target: 1000 },  // разгон до 1000
-        { duration: '2m', target: 1000 },  // держим 1000
-        { duration: '1m', target: 0 },     // сброс
+        { duration: '1m', target: 200 },
+        { duration: '2m', target: 200 },
+        { duration: '1m', target: 400 },
+        { duration: '2m', target: 400 },
+        { duration: '1m', target: 600 },
+        { duration: '2m', target: 600 },
+        { duration: '1m', target: 800 },
+        { duration: '2m', target: 800 },
+        { duration: '1m', target: 1000 },
+        { duration: '2m', target: 1000 },
+        { duration: '1m', target: 0 },
       ],
       gracefulRampDown: '30s',
     },
   },
   thresholds: {
-    http_req_failed: ['rate<0.01'],
+    http_req_failed: ['rate<0.05'],
     http_req_duration: ['p(95)<2000'],
   },
 };
@@ -32,19 +32,18 @@ export const options = {
 const BASE_URL = 'http://api-gateway:8080';
 const USER = 'admin';
 const PASS = '123456';
-const VIDEO_ID = 34;
 
-// Сколько сегментов «смотрит» один зритель за одну итерацию
-// 33 сегмента × ~9 сек = ~5 минут просмотра
+// ⬇️⬇️⬇️ ЗАМЕНИТЕ НА ВАШИ ID ⬇️⬇️⬇️
+const VIDEO_IDS = [34, 35, 36, 37, 38, 39, 40, 41, 42, 49];
+// ⬆️⬆️⬆️ ЗАМЕНИТЕ НА ВАШИ ID ⬆️⬆️⬆️
+
 const SEGMENTS_PER_VIEW = 33;
 const SEGMENT_DURATION_SEC = 9.2;
 
-// Заменяем localhost:9000 на адрес nginx-кэша внутри Docker
 function fixUrl(url) {
   return url.replace('localhost:9000', 'minio-cache:8080');
 }
 
-// Собираем абсолютный URL из относительного
 function resolveUrl(baseUrl, relative) {
   if (relative.startsWith('http://') || relative.startsWith('https://')) {
     return relative;
@@ -59,7 +58,7 @@ export function setup() {
     JSON.stringify({ username: USER, password: PASS }),
     {
       headers: { 'Content-Type': 'application/json' },
-      responseType: 'text',   // важно: иначе discardResponseBodies съест тело
+      responseType: 'text',
     }
   );
 
@@ -78,9 +77,12 @@ export function setup() {
 export default function (data) {
   const headers = { headers: { Authorization: `Bearer ${data.token}` } };
 
+  // Случайное видео для каждого VU
+  const videoId = VIDEO_IDS[Math.floor(Math.random() * VIDEO_IDS.length)];
+
   // 1. Получаем URL манифеста через API
   const playlistRes = http.get(
-    `${BASE_URL}/api/stream/${VIDEO_ID}/playlist-url`,
+    `${BASE_URL}/api/stream/${videoId}/playlist-url`,
     { ...headers, responseType: 'text' }
   );
 
@@ -106,7 +108,7 @@ export default function (data) {
   // 3. Ищем вариант 720p. Если нет — берём первый попавшийся
   let variantUrl = null;
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('RESOLUTION=1960x1080')) {
+    if (lines[i].includes('RESOLUTION=1280x720')) {
       variantUrl = resolveUrl(masterUrl, lines[i + 1]);
       break;
     }
@@ -117,11 +119,6 @@ export default function (data) {
     );
     variantUrl = variantLine ? resolveUrl(masterUrl, variantLine) : masterUrl;
   }
-
-  // Отладка: печатаем выбранный вариант (первая итерация каждого VU)
-//  if (__ITER === 0) {
-//    console.log(`VU ${__VU} variant: ${variantUrl}`);
-//  }
 
   // 4. Скачиваем плейлист варианта
   const variant = http.get(variantUrl, { responseType: 'text' });

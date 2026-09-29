@@ -7,6 +7,9 @@ services:
       - prometheus_data:/prometheus
     ports:
       - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.enable-remote-write-receiver'
     profiles: [ monitoring ]
 
   grafana:
@@ -26,10 +29,16 @@ services:
       - ./k6-scripts:/scripts
       - ./k6-results:/results
     command: run /scripts/test.js
+    environment:
+      K6_PROMETHEUS_RW_SERVER_URL: http://prometheus:9090/api/v1/write
     profiles:
       - load-testing
     depends_on:
       - api-gateway
+    deploy:
+      resources:
+        limits:
+          memory: 4G
 
 volumes:
   prometheus_data:

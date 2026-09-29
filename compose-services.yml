@@ -60,6 +60,7 @@ services:
     depends_on:
       - postgres
       - minio
+      - redis
     env_file:
       - env/.env.common
       - env/.env.stream
