@@ -48,11 +48,11 @@ public class VideoProcessingService {
             storage.uploadDirectory(hlsDir, basePath);
             log.info("☁️ Uploaded HLS segments to {}", basePath);
 
-            eventPublisher.publishProcessed(videoId, "READY", basePath + "master.m3u8");
+            eventPublisher.publishProcessed(videoId, event.getUserId(), "READY", basePath + "master.m3u8");
             log.info("🎉 Processing finished videoId={}", videoId);
         } catch (Exception e) {
             log.error("❌ Processing failed for videoId={}: {}", videoId, e.getMessage(), e);
-            eventPublisher.publishProcessed(videoId, "FAILED", null);
+            eventPublisher.publishProcessed(videoId, event.getUserId(), "FAILED", null);
         }
     }
 }
