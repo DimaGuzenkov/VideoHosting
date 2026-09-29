@@ -28,7 +28,7 @@ services:
     volumes:
       - ./k6-scripts:/scripts
       - ./k6-results:/results
-    command: run /scripts/test.js
+    command: run /scripts/api-test.js
     environment:
       K6_PROMETHEUS_RW_SERVER_URL: http://prometheus:9090/api/v1/write
     profiles:

@@ -218,7 +218,7 @@ include:
 #    volumes:
 #      - ./k6-scripts:/scripts
 #      - ./k6-results:/results
-#    command: run /scripts/test.js
+#    command: run /scripts/api-test.js
 #    profiles:
 #      - load-testing
 #    depends_on:
