@@ -1,4 +1,4 @@
-package com.example.processor.scheduler;
+package com.example.processor.scheduler.data;
 
 import com.example.avro.VideoUploadedEvent;
 import com.example.processor.ffmpeg.Quality;

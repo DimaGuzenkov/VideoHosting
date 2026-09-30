@@ -1,8 +1,8 @@
 package com.example.processor.processing;
 
 import com.example.processor.ffmpeg.Quality;
-import com.example.processor.scheduler.ProcessingTaskRepository;
-import com.example.processor.scheduler.TaskStatus;
+import com.example.processor.db.ProcessingTaskRepository;
+import com.example.processor.scheduler.data.TaskStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

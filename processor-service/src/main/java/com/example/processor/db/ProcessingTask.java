@@ -1,5 +1,6 @@
-package com.example.processor.scheduler;
+package com.example.processor.db;
 
+import com.example.processor.scheduler.data.TaskStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -7,7 +8,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "video_processing_tasks",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"videoId", "quality"}))
+        uniqueConstraints = @UniqueConstraint(columnNames = {"video_id", "quality"}))
 @Data
 @Builder
 @NoArgsConstructor
@@ -18,7 +19,7 @@ public class ProcessingTask {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "video_id", nullable = false)
     private Long videoId;
 
     @Column(nullable = false, length = 16)
@@ -28,6 +29,15 @@ public class ProcessingTask {
     @Column(nullable = false, length = 16)
     private TaskStatus status;
 
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(name = "file_path", length = 512)
+    private String filePath;
+
+    @Column(name = "started_at")
     private LocalDateTime startedAt;
+
+    @Column(name = "finished_at")
     private LocalDateTime finishedAt;
 }

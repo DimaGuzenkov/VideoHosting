@@ -1,5 +1,6 @@
-package com.example.processor.scheduler;
+package com.example.processor.db;
 
+import com.example.processor.scheduler.data.TaskStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
