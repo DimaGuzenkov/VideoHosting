@@ -1,6 +1,7 @@
 package com.example.uploadvideo.db;
 
 import com.example.avro.VideoUploadedEvent;
+import com.example.avro.VideoDeletedEvent;
 import com.example.uploadvideo.kafka.EventPublisher;
 import com.example.uploadvideo.db.model.Video;
 import com.example.uploadvideo.db.model.VideoStatus;
@@ -69,5 +70,6 @@ public class VideoService {
     @Transactional
     public void deleteVideo(Long id) {
         videoRepository.deleteById(id);
+        eventPublisher.publishVideoDeleted(new VideoDeletedEvent(id));
     }
 }

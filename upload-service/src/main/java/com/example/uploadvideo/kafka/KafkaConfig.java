@@ -9,6 +9,7 @@ import org.springframework.kafka.config.TopicBuilder;
 public class KafkaConfig {
 
     public static final String VIDEO_UPLOADED_TOPIC = "video.uploaded";
+    public static final String VIDEO_DELETED_TOPIC = "video.deleted";
 
     @Bean
     public NewTopic videoUploadedTopic() {

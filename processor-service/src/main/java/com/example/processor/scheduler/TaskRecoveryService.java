@@ -2,12 +2,12 @@ package com.example.processor.scheduler;
 
 import com.example.avro.VideoUploadedEvent;
 import com.example.processor.db.ProcessingTask;
+import com.example.processor.processing.ProcessingTaskRegistry;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 

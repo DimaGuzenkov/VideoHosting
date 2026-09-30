@@ -29,6 +29,7 @@ public class VideoProcessingService {
     private final FfmpegService ffmpeg;
     private final HlsPlaylistBuilder playlistBuilder;
     private final EventPublisher eventPublisher;
+    private final ProcessingTaskRegistry registry;
 
     public void process(VideoTask task) {
         Long videoId = task.event().getVideoId();
@@ -46,6 +47,11 @@ public class VideoProcessingService {
             ffmpeg.convertToHls(input, hlsDir, claimed);
             playlistBuilder.writeMasterPlaylist(hlsDir, claimed);
 
+            if (registry.isCancelled(videoId)) {
+                taskService.markCanceled(videoId, claimed);
+                return;
+            }
+
             String basePath = "videos/" + task.event().getUserId() + "/" + videoId + "/hls/";
             storage.uploadDirectory(hlsDir, basePath);
 
@@ -54,6 +60,10 @@ public class VideoProcessingService {
             log.info("🎉 videoId={} processed, qualities={}", videoId, claimed);
 
         } catch (Exception e) {
+            if (registry.isCancelled(videoId)) {
+                taskService.markCanceled(videoId, claimed);
+                return;
+            }
             taskService.markFailed(videoId, claimed);
             eventPublisher.publishProcessed(videoId, userId, "FAILED", null);
             throw new RuntimeException("Processing failed: " + e.getMessage(), e);

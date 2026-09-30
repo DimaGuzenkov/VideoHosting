@@ -43,4 +43,18 @@ public interface ProcessingTaskRepository extends JpaRepository<ProcessingTask, 
     Optional<ProcessingTask> findByVideoIdAndQuality(Long videoId, String quality);
 
     List<ProcessingTask> findByStatus(TaskStatus status);
+
+    @Modifying
+    @Query("DELETE FROM ProcessingTask t WHERE t.videoId = :videoId AND t.status = 'PENDING'")
+    int deletePendingByVideoId(@Param("videoId") Long videoId);
+
+    @Modifying
+    @Query("UPDATE ProcessingTask t SET t.status = 'CANCELLED', t.finishedAt = :now " +
+            "WHERE t.videoId = :videoId AND t.status = 'IN_PROGRESS'")
+    int markCancelledByVideoId(@Param("videoId") Long videoId,
+                               @Param("now") LocalDateTime now);
+
+    @Query("SELECT COUNT(t) > 0 FROM ProcessingTask t " +
+            "WHERE t.videoId = :videoId AND t.status = 'CANCELLED'")
+    boolean isCancelled(@Param("videoId") Long videoId);
 }
