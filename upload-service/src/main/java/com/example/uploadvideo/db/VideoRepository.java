@@ -1,6 +1,6 @@
-package com.example.uploadvideo.repository;
+package com.example.uploadvideo.db;
 
-import com.example.uploadvideo.model.Video;
+import com.example.uploadvideo.db.model.Video;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

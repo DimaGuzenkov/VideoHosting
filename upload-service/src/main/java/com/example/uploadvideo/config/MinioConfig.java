@@ -1,23 +1,27 @@
 package com.example.uploadvideo.config;
 
-import io.minio.BucketExistsArgs;
-import io.minio.MakeBucketArgs;
-import io.minio.MinioClient;
-import io.minio.SetBucketPolicyArgs;
-import io.minio.errors.MinioException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.S3Configuration;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
-import java.io.IOException;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
+import java.net.URI;
 
 @Configuration
 public class MinioConfig {
 
     @Value("${minio.endpoint}")
-    private String endpoint;
+    private String internalEndpoint;
+
+    @Value("${minio.public-endpoint}")
+    private String publicEndpoint;
 
     @Value("${minio.access-key}")
     private String accessKey;
@@ -28,39 +32,42 @@ public class MinioConfig {
     @Value("${minio.bucket-name}")
     private String bucketName;
 
+    /** Асинхронный клиент — для multipart upload. */
     @Bean
-    public MinioClient minioClient() {
-        return MinioClient.builder()
-                .endpoint(endpoint)
-                .credentials(accessKey, secretKey)
+    @Primary
+    public S3AsyncClient s3AsyncClient() {
+        return S3AsyncClient.builder()
+                .endpointOverride(URI.create(internalEndpoint))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(accessKey, secretKey)))
+                .region(Region.US_EAST_1)
+                .forcePathStyle(true)
                 .build();
     }
 
-    // Создаём bucket при старте (если не существует)
+    /** Синхронный клиент — для delete, put, get, list. */
     @Bean
-    public boolean initMinioBucket(MinioClient minioClient) {
-        try {
-            boolean exists = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
-            if (!exists) {
-                minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
-                System.out.println("✅ Bucket created: " + bucketName);
-            } else {
-                System.out.println("✅ Bucket already exists: " + bucketName);
-            }
+    public S3Client s3Client() {
+        return S3Client.builder()
+                .endpointOverride(URI.create(internalEndpoint))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(accessKey, secretKey)))
+                .region(Region.US_EAST_1)
+                .forcePathStyle(true)
+                .build();
+    }
 
-            // Публичная политика для чтения всех объектов
-            String policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::" + bucketName + "/*\"]}]}";
-            minioClient.setBucketPolicy(
-                    SetBucketPolicyArgs.builder()
-                            .bucket(bucketName)
-                            .config(policy)
-                            .build()
-            );
-            System.out.println("✅ Public read policy applied to bucket: " + bucketName);
-        } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Failed to initialize bucket: " + e.getMessage(), e);
-        }
-        return true;
+    /** Presigner — для presigned URL. */
+    @Bean
+    public S3Presigner s3Presigner() {
+        return S3Presigner.builder()
+                .endpointOverride(URI.create(publicEndpoint))
+                .credentialsProvider(StaticCredentialsProvider.create(
+                        AwsBasicCredentials.create(accessKey, secretKey)))
+                .region(Region.US_EAST_1)
+                .serviceConfiguration(S3Configuration.builder()
+                        .pathStyleAccessEnabled(true)
+                        .build())
+                .build();
     }
 }

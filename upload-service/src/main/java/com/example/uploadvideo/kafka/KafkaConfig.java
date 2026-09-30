@@ -1,4 +1,4 @@
-package com.example.uploadvideo.config;
+package com.example.uploadvideo.kafka;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.context.annotation.Bean;

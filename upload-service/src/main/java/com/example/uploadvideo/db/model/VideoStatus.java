@@ -1,4 +1,4 @@
-package com.example.uploadvideo.model;
+package com.example.uploadvideo.db.model;
 
 public enum VideoStatus {
     UPLOADED,

@@ -1,4 +1,4 @@
-package com.example.uploadvideo;
+package com.example.uploadvideo.delete;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

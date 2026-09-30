@@ -28,7 +28,6 @@ services:
     env_file:
       - env/.env.common
       - env/.env.jwt
-      - env/.env.gateway
     volumes:
       - ./api-gateway/target/api-gateway-0.0.1-SNAPSHOT.jar:/app.jar
     command: [ "java", "-jar", "/app.jar" ]
@@ -45,6 +44,7 @@ services:
       - postgres
       - minio
       - kafka
+      - redis
     env_file:
       - env/.env.common
       - env/.env.upload

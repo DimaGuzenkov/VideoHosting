@@ -1,16 +1,13 @@
-package com.example.uploadvideo.controller;
+package com.example.uploadvideo.delete;
 
-import com.example.uploadvideo.model.Video;
-import com.example.uploadvideo.service.StorageService;
-import com.example.uploadvideo.service.VideoService;
-import com.example.uploadvideo.ValidationResult;
+import com.example.uploadvideo.db.model.Video;
+import com.example.uploadvideo.db.VideoService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
-import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/videos")
@@ -20,32 +17,32 @@ public class VideoController {
     private final VideoService videoService;
     private final StorageService storageService;
 
-    @PostMapping("/upload")
-    public ResponseEntity<?> uploadVideo(
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("title") String title,
-            @RequestParam("description") String description,
-            @RequestHeader("X-User-Id") Long userId) {
-
-        ValidationResult validation = validateVideoUpload(file, title);
-        if (!validation.isValid()) {
-            return ResponseEntity.badRequest().body(Map.of("error", validation.getErrorMessage()));
-        }
-
-        try {
-            String filePath = storageService.uploadFile(file, "videos/" + userId);
-            Video video = videoService.createVideo(title, description, filePath, userId);
-
-            return ResponseEntity.ok(Map.of(
-                    "id", video.getId(),
-                    "title", video.getTitle(),
-                    "status", video.getStatus(),
-                    "filePath", video.getFilePath()
-            ));
-        } catch (Exception e) {
-            return ResponseEntity.status(500).body(Map.of("error", "Upload failed: " + e.getMessage()));
-        }
-    }
+//    @PostMapping("/upload")
+//    public ResponseEntity<?> uploadVideo(
+//            @RequestParam("file") MultipartFile file,
+//            @RequestParam("title") String title,
+//            @RequestParam("description") String description,
+//            @RequestHeader("X-User-Id") Long userId) {
+//
+//        ValidationResult validation = validateVideoUpload(file, title);
+//        if (!validation.isValid()) {
+//            return ResponseEntity.badRequest().body(Map.of("error", validation.getErrorMessage()));
+//        }
+//
+//        try {
+//            String filePath = storageService.uploadFile(file, "videos/" + userId);
+//            Video video = videoService.createVideo(title, description, filePath, userId);
+//
+//            return ResponseEntity.ok(Map.of(
+//                    "id", video.getId(),
+//                    "title", video.getTitle(),
+//                    "status", video.getStatus(),
+//                    "filePath", video.getFilePath()
+//            ));
+//        } catch (Exception e) {
+//            return ResponseEntity.status(500).body(Map.of("error", "Upload failed: " + e.getMessage()));
+//        }
+//    }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteVideo(
