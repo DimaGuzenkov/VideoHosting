@@ -1,6 +1,5 @@
-package com.example.uploadvideo.service;
+package com.example.uploadvideo.kafka;
 
-import com.example.uploadvideo.config.KafkaConfig;
 //import com.example.uploadvideo.VideoUploadedEvent;
 import com.example.avro.VideoUploadedEvent;
 import lombok.RequiredArgsConstructor;

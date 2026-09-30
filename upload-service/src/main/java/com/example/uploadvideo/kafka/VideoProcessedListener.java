@@ -1,8 +1,8 @@
-package com.example.uploadvideo;
+package com.example.uploadvideo.kafka;
 
 import com.example.avro.VideoProcessedEvent;
-import com.example.uploadvideo.model.VideoStatus;
-import com.example.uploadvideo.service.VideoService;
+import com.example.uploadvideo.db.model.VideoStatus;
+import com.example.uploadvideo.db.VideoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;

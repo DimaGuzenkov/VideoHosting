@@ -162,6 +162,7 @@ async function uploadVideo() {
     const fileInput = document.getElementById('uploadFile');
     const file = fileInput.files[0];
     const status = document.getElementById('uploadStatus');
+    const progress = document.getElementById('uploadProgress');
 
     if (!title || !file) {
         status.textContent = 'Заполните название и выберите файл.';
@@ -169,30 +170,90 @@ async function uploadVideo() {
     }
 
     const token = getToken();
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('title', title);
-    formData.append('description', description);
+    status.textContent = '⏳ Инициализация...';
+    progress.style.display = 'block';
+    progress.value = 0;
 
     try {
-        const res = await fetch('/api/videos/upload', {
+        // 1. Init
+        const initRes = await fetch('/api/videos/upload/init', {
             method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + token },
-            body: formData
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title,
+                description,
+                fileName: file.name,
+                fileSize: file.size,
+                contentType: file.type || 'video/mp4'
+            })
         });
-        const { ok, data } = await parseJsonSafe(res);
+        if (!initRes.ok) throw new Error('Init failed: ' + initRes.status);
+        const init = await initRes.json();
 
-        if (ok) {
-            status.textContent = '✅ Загружено! ID: ' + data.id;
-            document.getElementById('uploadTitle').value = '';
-            document.getElementById('uploadDescription').value = '';
-            fileInput.value = '';
-            loadVideoList();   // сразу подгрузим список — увидим UPLOADED
-        } else {
-            status.textContent = '❌ Ошибка: ' + (data.error || 'Неизвестная ошибка');
+        // 2. Upload parts (параллельно, max 3 в полёте)
+        const uploaded = [];
+        const CONCURRENCY = 3;
+        let completed = 0;
+
+        for (let i = 0; i < init.parts.length; i += CONCURRENCY) {
+            const batch = init.parts.slice(i, i + CONCURRENCY);
+            const results = await Promise.all(batch.map(async (part) => {
+                const start = (part.partNumber - 1) * init.partSize;
+                const end = Math.min(start + init.partSize, file.size);
+                const chunk = file.slice(start, end);
+
+                const res = await fetch(part.presignedUrl, {
+                    method: 'PUT',
+                    body: chunk
+                });
+                if (!res.ok) throw new Error(`Part ${part.partNumber} failed: ${res.status}`);
+
+                const etag = res.headers.get('ETag');
+                if (!etag) throw new Error(`No ETag for part ${part.partNumber}`);
+
+                completed++;
+                progress.value = Math.round(completed / init.parts.length * 100);
+                status.textContent = `⬆️ Загрузка ${completed}/${init.parts.length} (${progress.value}%)`;
+
+                return { partNumber: part.partNumber, etag };
+            }));
+            uploaded.push(...results);
         }
+
+        // 3. Complete
+        status.textContent = '✅ Сборка файла...';
+        const completeRes = await fetch('/api/videos/upload/complete', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                uploadId: init.uploadId,
+                objectKey: init.objectKey,
+                title,
+                description,
+                fileName: file.name,
+                parts: uploaded
+            })
+        });
+        const result = await completeRes.json();
+        if (!completeRes.ok) throw new Error(result.error || 'Complete failed');
+
+        status.textContent = '🎉 Видео загружено! ID: ' + result.id;
+        progress.style.display = 'none';
+        document.getElementById('uploadTitle').value = '';
+        document.getElementById('uploadDescription').value = '';
+        fileInput.value = '';
+        loadVideoList();
+
     } catch (e) {
-        status.textContent = '❌ Ошибка сети: ' + e.message;
+        console.error('Upload error:', e);
+        status.textContent = '❌ ' + e.message;
+        progress.style.display = 'none';
     }
 }
 

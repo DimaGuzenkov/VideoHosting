@@ -1,9 +1,9 @@
-package com.example.uploadvideo.service;
+package com.example.uploadvideo.db;
 
 import com.example.avro.VideoUploadedEvent;
-import com.example.uploadvideo.model.Video;
-import com.example.uploadvideo.model.VideoStatus;
-import com.example.uploadvideo.repository.VideoRepository;
+import com.example.uploadvideo.kafka.EventPublisher;
+import com.example.uploadvideo.db.model.Video;
+import com.example.uploadvideo.db.model.VideoStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

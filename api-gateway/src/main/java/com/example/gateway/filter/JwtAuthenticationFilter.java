@@ -29,12 +29,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     private static final List<String> PUBLIC_PATHS = List.of(
             "/api/auth/register",
             "/api/auth/login",
-            "/login.html",
-            "/dashboard.html",
-            "/player.html",
-            "/css/",
-            "/js/",
-            "/favicon.ico"
+            "/login.html", "/dashboard.html", "/player.html",
+            "/css/", "/js/", "/favicon.ico",
+            "/v3/api-docs/",           // все api-docs
+            "/swagger-ui/",            // статика swagger
+            "/swagger-ui.html",        // точка входа
+            "/webjars/"                // ресурсы для swagger
     );
 
     private SecretKey getSigningKey() {

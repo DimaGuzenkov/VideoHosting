@@ -24,6 +24,7 @@ services:
       MINIO_ROOT_PASSWORD: minioadmin
       MINIO_ENDPOINT: http://minio:9000
       MINIO_PUBLIC_ENDPOINT: http://localhost:9000
+      MINIO_API_CORS_ALLOW_ORIGIN: "*"
     ports:
       - "9001:9001"   # Web Console
     volumes:
@@ -43,11 +44,14 @@ services:
     image: nginx:alpine
     container_name: minio-cache
     ports:
-      - "9000:8080"
+      - "9000:9000"
     volumes:
-      - ./nginx-minio-cache.conf:/etc/nginx/conf.d/default.conf
+      - ./docker/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx-minio-cache.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx_cache_data:/var/cache/nginx
     depends_on:
       - minio
+    restart: unless-stopped
 
   redis:
     image: redis:7.2-alpine
@@ -106,5 +110,6 @@ services:
 volumes:
   postgres_data:
   minio_data:
+  nginx_cache_data:
   redis_data:
   kafka_data:
