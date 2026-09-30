@@ -93,6 +93,7 @@ public class FfmpegService {
         try {
             ProcessBuilder pb = new ProcessBuilder(SHELL, SHELL_ARG, cmd);
             pb.redirectErrorStream(true);
+            pb.redirectOutput(ProcessBuilder.Redirect.DISCARD);
             Process process = pb.start();
 
             return process.waitFor();
