@@ -35,6 +35,11 @@ public interface ProcessingTaskRepository extends JpaRepository<ProcessingTask, 
             "WHERE t.status = 'IN_PROGRESS' AND t.startedAt < :threshold")
     int reclaimStale(@Param("threshold") LocalDateTime threshold);
 
+    @Modifying
+    @Query("UPDATE ProcessingTask t SET t.status = 'PENDING', t.startedAt = null " +
+            "WHERE t.status = 'IN_PROGRESS'")
+    int reclaimAllInProgress();
+
     Optional<ProcessingTask> findByVideoIdAndQuality(Long videoId, String quality);
 
     List<ProcessingTask> findByStatus(TaskStatus status);

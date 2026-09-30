@@ -79,6 +79,11 @@ public class ProcessingTaskRegistry {
         return taskRepo.reclaimStale(threshold);
     }
 
+    @Transactional
+    public int reclaimAllInProgress() {
+        return taskRepo.reclaimAllInProgress();
+    }
+
     public List<ProcessingTask> findPending() {
         return taskRepo.findByStatus(TaskStatus.PENDING);
     }

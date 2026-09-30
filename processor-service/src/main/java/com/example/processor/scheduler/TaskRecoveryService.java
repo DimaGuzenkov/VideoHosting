@@ -23,7 +23,7 @@ public class TaskRecoveryService {
     public void recover() {
         log.info("🔄 Starting task recovery...");
 
-        int reclaimed = registry.reclaimStale(LocalDateTime.now().minusMinutes(30));
+        int reclaimed = registry.reclaimAllInProgress();
         if (reclaimed > 0) {
             log.warn("♻️ Reclaimed {} stale IN_PROGRESS tasks", reclaimed);
         }
