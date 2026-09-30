@@ -89,6 +89,17 @@ clean: ## Очистить target всех модулей
 	@echo "$(GREEN)>>> Очистка target...$(RESET)"
 	$(MAVEN) clean
 
+.PHONY: build-frontend
+build-frontend: ## Пересобрать frontend-образ (Nginx + статика)
+	@echo "$(GREEN)>>> Сборка frontend...$(RESET)"
+	docker compose build --no-cache frontend
+
+.PHONY: rebuild-frontend
+rebuild-frontend: build-frontend ## Пересобрать и пересоздать контейнер frontend
+	@echo "$(GREEN)>>> Перезапуск frontend...$(RESET)"
+	docker compose up -d --force-recreate frontend
+	@echo "$(GREEN)✅ Frontend обновлён$(RESET)"
+
 # ==============================================================================
 # ЗАПУСК / ОСТАНОВКА (Docker Compose)
 # ==============================================================================

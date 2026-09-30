@@ -15,9 +15,10 @@ public class EventPublisher {
 
     private static final String TOPIC = "video.processed";
 
-    public void publishProcessed(Long videoId, String status, String playlistPath) {
+    public void publishProcessed(Long videoId, Long userId, String status, String playlistPath) {
         VideoProcessedEvent event = VideoProcessedEvent.newBuilder()
                 .setVideoId(videoId)
+                .setUserId(userId)
                 .setStatus(status)
                 .setPlaylistPath(playlistPath)
                 .build();

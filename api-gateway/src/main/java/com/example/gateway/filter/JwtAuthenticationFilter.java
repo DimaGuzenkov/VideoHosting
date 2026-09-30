@@ -3,7 +3,6 @@ package com.example.gateway.filter;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -18,16 +17,25 @@ import reactor.core.publisher.Mono;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
     @Value("${jwt.secret}")
     private String secret;
 
-    private final JwtTokenProvider tokenProvider;
+    private static final List<String> PUBLIC_PATHS = List.of(
+            "/api/auth/register",
+            "/api/auth/login",
+            "/login.html", "/dashboard.html", "/player.html",
+            "/css/", "/js/", "/favicon.ico",
+            "/v3/api-docs/",           // все api-docs
+            "/swagger-ui/",            // статика swagger
+            "/swagger-ui.html",        // точка входа
+            "/webjars/"                // ресурсы для swagger
+    );
 
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
@@ -38,48 +46,54 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getPath().value();
 
-        // Пропускаем /auth/** без проверки
-        if (path.startsWith("/api/auth/") || isStatic(path)) {
+        if (isPublic(path)) {
             return chain.filter(exchange);
         }
 
-        // Извлекаем токен
-        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            log.warn("Missing or invalid Authorization header for path: {}", path);
+        String token = extractToken(request);
+        if (token == null) {
+            log.warn("Missing token for path: {}", path);
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
 
-        String token = authHeader.substring(7);
         try {
-            Long userId = tokenProvider.getUserIdFromToken(token);
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
 
-//            String username = claims.getSubject();
-//            log.debug("Authenticated user: {}", username);
+            Long userId = claims.get("userId", Long.class);
+            String username = claims.getSubject();
 
-            // Добавляем заголовок X-User-Id для downstream
+            log.debug("Authenticated: userId={}, username={}, path={}", userId, username, path);
+
             ServerHttpRequest mutatedRequest = request.mutate()
-                    .header("X-User-Id", userId.toString())
+                    .header("X-User-Id", String.valueOf(userId))
+                    .header("X-Username", username)
                     .build();
 
             return chain.filter(exchange.mutate().request(mutatedRequest).build());
+
         } catch (Exception e) {
-            log.error("JWT validation failed: {}", e.getMessage());
+            log.error("JWT validation failed for path {}: {}", path, e.getMessage());
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
     }
 
-    private boolean isStatic(String path) {
-        return path.endsWith(".html") ||
-                path.endsWith(".css") ||
-                path.endsWith(".js") ||
-                path.endsWith(".ico") ||
-                path.endsWith(".png") ||
-                path.endsWith(".jpg") ||
-                path.endsWith(".svg") ||
-                path.endsWith(".webmanifest");
+    private String extractToken(ServerHttpRequest request) {
+        String authHeader = request.getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+
+        return request.getQueryParams().getFirst("token");
+    }
+
+    private boolean isPublic(String path) {
+        return PUBLIC_PATHS.stream().anyMatch(path::startsWith);
     }
 
     @Override

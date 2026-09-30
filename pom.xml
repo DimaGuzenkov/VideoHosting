@@ -23,7 +23,7 @@
         <module>upload-service</module>
         <module>stream-service</module>
         <module>processor-service</module>
-        <!-- здесь будут другие модули: auth-service, upload-service, stream-service, processor-service, common -->
+        <module>notification-service</module>
     </modules>
 
     <properties>
