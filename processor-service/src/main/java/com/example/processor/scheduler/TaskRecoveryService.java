@@ -1,15 +1,12 @@
-package com.example.processor.scheduler;
+package com.example.processor.processing;
 
-import com.example.avro.VideoUploadedEvent;
-import com.example.processor.db.ProcessingTask;
-import com.example.processor.processing.ProcessingTaskRegistry;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Map;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -17,40 +14,24 @@ import java.util.Map;
 public class TaskRecoveryService {
 
     private final ProcessingTaskRegistry registry;
-    private final VideoTaskScheduler scheduler;
+
+    @Value("${processor.heartbeat.timeout-minutes:10}")
+    private int heartbeatTimeoutMinutes;
 
     @PostConstruct
     public void recover() {
         log.info("🔄 Starting task recovery...");
 
-        int reclaimed = registry.reclaimAllInProgress();
-        if (reclaimed > 0) {
-            log.warn("♻️ Reclaimed {} stale IN_PROGRESS tasks", reclaimed);
+        LocalDateTime threshold = LocalDateTime.now()
+                .minusMinutes(heartbeatTimeoutMinutes);
+
+        int recovered = registry.recoverStale(threshold);
+
+        if (recovered > 0) {
+            log.warn("♻️ Recovered {} stale IN_PROGRESS tasks (heartbeat older than {} min)",
+                    recovered, heartbeatTimeoutMinutes);
+        } else {
+            log.info("🔄 No stale tasks to recover");
         }
-
-        Map<Long, List<ProcessingTask>> byVideo = registry.findPendingGroupedByVideo();
-        if (byVideo.isEmpty()) {
-            log.info("🔄 Nothing to recover");
-            return;
-        }
-
-        int recovered = 0;
-        for (var entry : byVideo.entrySet()) {
-            Long videoId = entry.getKey();
-            List<ProcessingTask> tasks = entry.getValue();
-
-            ProcessingTask first = tasks.get(0);
-            VideoUploadedEvent event = VideoUploadedEvent.newBuilder()
-                    .setVideoId(videoId)
-                    .setUserId(first.getUserId())
-                    .setFilePath(first.getFilePath())
-                    .build();
-
-            var split = registry.splitByPriority(tasks);
-            scheduler.enqueue(event, split.fast(), split.slow());
-            recovered++;
-        }
-
-        log.info("🔄 Recovered {} videos from DB", recovered);
     }
 }

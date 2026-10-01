@@ -1,7 +1,6 @@
 package com.example.processor.metrics;
 
 import com.example.processor.scheduler.TaskQueue;
-import com.example.processor.scheduler.VideoTaskScheduler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;

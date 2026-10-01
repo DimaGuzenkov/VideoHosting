@@ -69,22 +69,60 @@ services:
       - ./stream-service/target/stream-service-0.0.1-SNAPSHOT.jar:/app.jar
     command: [ "java", "-jar", "/app.jar" ]
 
-  processor-service:
+#  processor-service:
+#    build: ./processor-service
+#    container_name: processor-service
+#    ports:
+#      - "8084:8080"
+#    depends_on:
+#      - kafka
+#      - minio
+#      - schema-registry
+#    env_file:
+#      - env/.env.common
+#      - env/.env.processor
+#      - env/.env.event
+#    volumes:
+#      - ./processor-service/target/processor-service-0.0.1-SNAPSHOT.jar:/app.jar
+#    command: [ "java", "-jar", "/app.jar" ]
+
+  processor-fast:
     build: ./processor-service
-    container_name: processor-service
-    ports:
-      - "8084:8080"
+    container_name: processor-fast
+    ports: [ "8084:8080" ]
     depends_on:
-      - kafka
-      - minio
-      - schema-registry
+      postgres-processor: { condition: service_healthy }
+      kafka: { condition: service_started }
+      minio: { condition: service_started }
+      schema-registry: { condition: service_started }
     env_file:
       - env/.env.common
-      - env/.env.processor
+      - env/.env.processor-common
+      - env/.env.processor-fast
       - env/.env.event
     volumes:
       - ./processor-service/target/processor-service-0.0.1-SNAPSHOT.jar:/app.jar
     command: [ "java", "-jar", "/app.jar" ]
+    restart: unless-stopped
+
+  processor-slow:
+    build: ./processor-service
+    container_name: processor-slow
+    ports: [ "8089:8080" ]
+    depends_on:
+      postgres-processor: { condition: service_healthy }
+      kafka: { condition: service_started }
+      minio: { condition: service_started }
+      schema-registry: { condition: service_started }
+    env_file:
+      - env/.env.common
+      - env/.env.processor-common
+      - env/.env.processor-slow
+      - env/.env.event
+    volumes:
+      - ./processor-service/target/processor-service-0.0.1-SNAPSHOT.jar:/app.jar
+    command: [ "java", "-jar", "/app.jar" ]
+    restart: unless-stopped
 
   notification-service:
     image: eclipse-temurin:17-jre-alpine

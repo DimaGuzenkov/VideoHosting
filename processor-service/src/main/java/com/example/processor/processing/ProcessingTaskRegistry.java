@@ -1,6 +1,6 @@
 package com.example.processor.processing;
 
-import com.example.avro.VideoUploadedEvent;
+import com.example.processor.ProcessorMode;
 import com.example.processor.db.ProcessingTask;
 import com.example.processor.db.ProcessingTaskRepository;
 import com.example.processor.ffmpeg.Quality;
@@ -8,12 +8,12 @@ import com.example.processor.scheduler.data.TaskStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,106 +21,91 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ProcessingTaskRegistry {
 
-    private final ProcessingTaskRepository taskRepo;
+    private final ProcessingTaskRepository repo;
     private final VideoProcessingProperties props;
 
-
     @Transactional
-    public void ensureTasksExist(VideoUploadedEvent event) {
-        Long videoId = event.getVideoId();
-        Long userId = event.getUserId();
-        String filePath = event.getFilePath().toString();
+    public void persist(Long videoId, Long userId, String filePath,
+                        ProcessorMode mode) {
+        List<Quality> qualities = mode == ProcessorMode.FAST
+                ? props.getFast()
+                : props.getSlow();
 
-        ensureForQualities(videoId, userId, filePath, props.getFast());
-        ensureForQualities(videoId, userId, filePath, props.getSlow());
-    }
-
-    private void ensureForQualities(Long videoId, Long userId, String filePath, List<Quality> qualities) {
         for (Quality q : qualities) {
-            var existing = taskRepo.findByVideoIdAndQuality(videoId, q.name());
-            if (existing.isEmpty()) {
-                taskRepo.save(ProcessingTask.builder()
-                        .videoId(videoId)
-                        .quality(q.name())
-                        .status(TaskStatus.PENDING)
-                        .userId(userId)
-                        .filePath(filePath)
-                        .build());
-            } else {
-                var task = existing.get();
-                if (task.getUserId() == null) task.setUserId(userId);
-                if (task.getFilePath() == null) task.setFilePath(filePath);
-            }
+            repo.insertIfNotExists(videoId, q.name(), userId, filePath);
         }
+        log.debug("Persisted {} tasks for video {} [{}]",
+                qualities.size(), videoId, mode);
     }
 
-    public List<Quality> filterPendingFast(Long videoId) {
-        return filterPending(videoId, props.getFast());
-    }
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public List<ProcessingTask> claimNextBatch(String workerId, ProcessorMode mode) {
+        List<Quality> qualities = mode == ProcessorMode.FAST
+                ? props.getFast()
+                : props.getSlow();
 
-    public List<Quality> filterPendingSlow(Long videoId) {
-        return filterPending(videoId, props.getSlow());
-    }
+        String[] qualityNames = qualities.stream()
+                .map(Quality::name)
+                .toArray(String[]::new);
 
-    private List<Quality> filterPending(Long videoId, List<Quality> qualities) {
-        List<String> done = taskRepo.findDoneQualities(videoId);
-        return qualities.stream()
-                .filter(q -> !done.contains(q.name()))
-                .filter(q -> {
-                    var t = taskRepo.findByVideoIdAndQuality(videoId, q.name());
-                    return t.isPresent() && t.get().getStatus() == TaskStatus.PENDING;
-                })
-                .toList();
+        return repo.claimNextBatch(qualityNames, workerId);
     }
 
     @Transactional
-    public int reclaimStale(LocalDateTime threshold) {
-        return taskRepo.reclaimStale(threshold);
+    public void heartbeat(String workerId) {
+        repo.updateHeartbeat(workerId, LocalDateTime.now());
     }
 
     @Transactional
-    public int reclaimAllInProgress() {
-        return taskRepo.reclaimAllInProgress();
+    public void markDone(Long videoId, List<String> qualities) {
+        repo.markDone(videoId, qualities, LocalDateTime.now());
     }
-
-    public List<ProcessingTask> findPending() {
-        return taskRepo.findByStatus(TaskStatus.PENDING);
-    }
-
-    public Map<Long, List<ProcessingTask>> findPendingGroupedByVideo() {
-        return findPending().stream()
-                .filter(t -> t.getUserId() != null && t.getFilePath() != null)
-                .collect(Collectors.groupingBy(ProcessingTask::getVideoId));
-    }
-
-    public PendingSplit splitByPriority(List<ProcessingTask> tasks) {
-        Set<String> names = tasks.stream()
-                .map(ProcessingTask::getQuality)
-                .collect(Collectors.toSet());
-
-        List<Quality> fast = props.getFast().stream()
-                .filter(q -> names.contains(q.name()))
-                .toList();
-        List<Quality> slow = props.getSlow().stream()
-                .filter(q -> names.contains(q.name()))
-                .toList();
-
-        return new PendingSplit(fast, slow);
-    }
-
-    public record PendingSplit(List<Quality> fast, List<Quality> slow) {}
 
     @Transactional
-    public int deletePendingByVideoId(Long videoId) {
-        return taskRepo.deletePendingByVideoId(videoId);
+    public void markFailed(Long videoId, List<String> qualities) {
+        repo.markFailed(videoId, qualities, LocalDateTime.now());
     }
 
     @Transactional
     public int markCancelledByVideoId(Long videoId) {
-        return taskRepo.markCancelledByVideoId(videoId, LocalDateTime.now());
+        return repo.markCancelledByVideoId(videoId, LocalDateTime.now());
+    }
+
+    @Transactional
+    public int deletePendingByVideoId(Long videoId) {
+        return repo.deletePendingByVideoId(videoId);
+    }
+
+    @Transactional
+    public int recoverStale(LocalDateTime threshold) {
+        return repo.recoverStale(threshold);
+    }
+
+    @Transactional
+    public int recoverByWorkerId(String workerId) {
+        return repo.recoverByWorkerId(workerId);
     }
 
     public boolean isCancelled(Long videoId) {
-        return taskRepo.isCancelled(videoId);
+        return repo.countCancelled(videoId) > 0;
+    }
+
+    public List<String> findDoneQualities(Long videoId) {
+        return repo.findDoneQualities(videoId);
+    }
+
+    public List<ProcessingTask> findByVideoId(Long videoId) {
+        return repo.findByVideoId(videoId);
+    }
+
+    @Transactional
+    public int updateHeartbeatSafe(String workerId) {
+        return repo.updateHeartbeat(workerId, LocalDateTime.now());
+    }
+
+    public Map<Long, List<ProcessingTask>> findPendingGroupedByVideo() {
+        return repo.findByStatus(TaskStatus.PENDING).stream()
+                .filter(t -> t.getUserId() != null && t.getFilePath() != null)
+                .collect(Collectors.groupingBy(ProcessingTask::getVideoId));
     }
 }
