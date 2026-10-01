@@ -1,7 +1,6 @@
 package com.example.processor.kafka;
 
 import com.example.avro.VideoUploadedEvent;
-import com.example.processor.processing.VideoProcessingService;
 import com.example.processor.scheduler.VideoTaskScheduler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class VideoProcessingConsumer {
+public class VideoProcessingListener {
 
     private final VideoTaskScheduler scheduler;
 

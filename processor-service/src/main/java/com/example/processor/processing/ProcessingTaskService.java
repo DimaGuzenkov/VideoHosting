@@ -38,6 +38,11 @@ public class ProcessingTaskService {
         updateStatus(videoId, qualities, TaskStatus.FAILED);
     }
 
+    @Transactional
+    public void markCanceled(Long videoId, List<Quality> qualities) {
+        updateStatus(videoId, qualities, TaskStatus.CANCELLED);
+    }
+
     private void updateStatus(Long videoId, List<Quality> qualities, TaskStatus status) {
         for (Quality q : qualities) {
             taskRepo.findByVideoIdAndQuality(videoId, q.name()).ifPresent(t -> {

@@ -77,6 +77,7 @@ public class FfmpegService {
             cmd.append(" -map \"[out").append(i).append("]\"")
                     .append(" -map 0:a?")
                     .append(" -c:v libx264 -preset ultrafast -c:a aac")
+                    .append(" -threads 1")
                     .append(" -hls_time ").append(props.getHlsTime())
                     .append(" -hls_list_size ").append(props.getHlsListSize())
                     .append(" -hls_segment_filename ").append(outputDir).append("/segment_")

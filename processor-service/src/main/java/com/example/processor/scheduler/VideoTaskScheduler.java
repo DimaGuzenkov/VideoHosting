@@ -3,6 +3,7 @@ package com.example.processor.scheduler;
 import com.example.avro.VideoUploadedEvent;
 import com.example.processor.ffmpeg.Quality;
 import com.example.processor.metrics.ProcessingMetrics;
+import com.example.processor.processing.ProcessingTaskRegistry;
 import com.example.processor.scheduler.data.VideoTask;
 import com.example.processor.scheduler.data.WorkerCapacityPlanner;
 import com.example.processor.scheduler.data.WorkerRole;
@@ -107,6 +108,16 @@ public class VideoTaskScheduler {
         queues.lock();
         try {
             queues.signalAll();
+        } finally {
+            queues.unlock();
+        }
+    }
+
+    public void removeFromQueues(Long videoId) {
+        queues.lock();
+        try {
+            queues.removeByVideoId(videoId);
+            log.info("🗑️ Removed videoId={} from queues", videoId);
         } finally {
             queues.unlock();
         }

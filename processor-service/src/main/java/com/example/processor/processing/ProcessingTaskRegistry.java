@@ -1,10 +1,9 @@
-package com.example.processor.scheduler;
+package com.example.processor.processing;
 
 import com.example.avro.VideoUploadedEvent;
 import com.example.processor.db.ProcessingTask;
 import com.example.processor.db.ProcessingTaskRepository;
 import com.example.processor.ffmpeg.Quality;
-import com.example.processor.processing.VideoProcessingProperties;
 import com.example.processor.scheduler.data.TaskStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -110,4 +109,18 @@ public class ProcessingTaskRegistry {
     }
 
     public record PendingSplit(List<Quality> fast, List<Quality> slow) {}
+
+    @Transactional
+    public int deletePendingByVideoId(Long videoId) {
+        return taskRepo.deletePendingByVideoId(videoId);
+    }
+
+    @Transactional
+    public int markCancelledByVideoId(Long videoId) {
+        return taskRepo.markCancelledByVideoId(videoId, LocalDateTime.now());
+    }
+
+    public boolean isCancelled(Long videoId) {
+        return taskRepo.isCancelled(videoId);
+    }
 }
