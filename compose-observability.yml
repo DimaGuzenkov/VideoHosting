@@ -38,7 +38,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 4G
+          memory: 6G
 
 volumes:
   prometheus_data:

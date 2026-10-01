@@ -1,5 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { BASE_URL, resolveUrl, loginAndGetToken, fetchReadyVideoIds, fixUrl } from './config.js';
 
 export const options = {
   discardResponseBodies: true,
@@ -8,16 +9,10 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '1m', target: 200 },
-        { duration: '2m', target: 200 },
-        { duration: '1m', target: 400 },
-        { duration: '2m', target: 400 },
-        { duration: '1m', target: 600 },
-        { duration: '2m', target: 600 },
-        { duration: '1m', target: 800 },
-        { duration: '2m', target: 800 },
-        { duration: '1m', target: 1000 },
+        { duration: '2m', target: 500 },
+        { duration: '3m', target: 500 },
         { duration: '2m', target: 1000 },
+        { duration: '3m', target: 1000 },
         { duration: '1m', target: 0 },
       ],
       gracefulRampDown: '30s',
@@ -29,83 +24,33 @@ export const options = {
   },
 };
 
-const BASE_URL = 'http://api-gateway:8080';
-const USER = 'admin';
-const PASS = '123456';
-
-// ⬇️⬇️⬇️ ЗАМЕНИТЕ НА ВАШИ ID ⬇️⬇️⬇️
-const VIDEO_IDS = [34, 35, 36, 37, 38, 39, 40, 41, 42, 49];
-// ⬆️⬆️⬆️ ЗАМЕНИТЕ НА ВАШИ ID ⬆️⬆️⬆️
-
-const SEGMENTS_PER_VIEW = 33;
+const SEGMENTS_PER_VIEW = 20;
 const SEGMENT_DURATION_SEC = 9.2;
 
-function fixUrl(url) {
-  return url.replace('localhost:9000', 'minio-cache:8080');
-}
-
-function resolveUrl(baseUrl, relative) {
-  if (relative.startsWith('http://') || relative.startsWith('https://')) {
-    return relative;
-  }
-  const dir = baseUrl.substring(0, baseUrl.lastIndexOf('/') + 1);
-  return dir + relative;
-}
-
 export function setup() {
-  const login = http.post(
-    `${BASE_URL}/api/auth/login`,
-    JSON.stringify({ username: USER, password: PASS }),
-    {
-      headers: { 'Content-Type': 'application/json' },
-      responseType: 'text',
-    }
-  );
-
-  const token =
-    login.json('token') ||
-    login.json('accessToken') ||
-    login.json('jwt');
-
-  if (!token) {
-    throw new Error('No token in login response: ' + login.body);
-  }
-
-  return { token };
+  const token = loginAndGetToken(http);
+  const videoIds = fetchReadyVideoIds(http, token);
+  return { token, videoIds };
 }
 
 export default function (data) {
   const headers = { headers: { Authorization: `Bearer ${data.token}` } };
+  const videoId = data.videoIds[Math.floor(Math.random() * data.videoIds.length)];
 
-  // Случайное видео для каждого VU
-  const videoId = VIDEO_IDS[Math.floor(Math.random() * VIDEO_IDS.length)];
-
-  // 1. Получаем URL манифеста через API
+  // 1. URL манифеста
   const playlistRes = http.get(
     `${BASE_URL}/api/stream/${videoId}/playlist-url`,
     { ...headers, responseType: 'text' }
   );
-
-  if (playlistRes.status !== 200) {
-    sleep(1);
-    return;
-  }
-
+  if (playlistRes.status !== 200) { sleep(1); return; }
   const masterUrl = fixUrl(playlistRes.json('playlistUrl'));
 
-  // 2. Скачиваем master.m3u8
+  // 2. Master playlist
   const master = http.get(masterUrl, { responseType: 'text' });
-  if (master.status !== 200) {
-    sleep(1);
-    return;
-  }
+  if (master.status !== 200) { sleep(1); return; }
 
-  const lines = master.body
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l);
-
-  // 3. Ищем вариант 720p. Если нет — берём первый попавшийся
+  // 3. Вариант 720p (с fallback на первый)
+  const lines = master.body.split('\n').map((l) => l.trim()).filter((l) => l);
   let variantUrl = null;
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].includes('RESOLUTION=1280x720')) {
@@ -114,19 +59,14 @@ export default function (data) {
     }
   }
   if (!variantUrl) {
-    const variantLine = lines.find(
-      (l, i) => lines[i - 1]?.startsWith('#EXT-X-STREAM-INF')
-    );
+    const variantLine = lines.find((l, i) => lines[i - 1]?.startsWith('#EXT-X-STREAM-INF'));
     variantUrl = variantLine ? resolveUrl(masterUrl, variantLine) : masterUrl;
   }
 
-  // 4. Скачиваем плейлист варианта
   const variant = http.get(variantUrl, { responseType: 'text' });
-  if (variant.status !== 200) {
-    sleep(1);
-    return;
-  }
+  if (variant.status !== 200) { sleep(1); return; }
 
+  // 4. Сегменты
   const baseDir = variantUrl.substring(0, variantUrl.lastIndexOf('/') + 1);
   const segments = variant.body
     .split('\n')
@@ -134,10 +74,8 @@ export default function (data) {
     .filter((l) => l && !l.startsWith('#'))
     .slice(0, SEGMENTS_PER_VIEW);
 
-  // 5. Качаем сегменты. Тело НЕ читаем — экономим память
   for (const seg of segments) {
-    const segUrl = resolveUrl(baseDir, seg);
-    const r = http.get(segUrl, { responseType: 'none' });
+    const r = http.get(resolveUrl(baseDir, seg), { responseType: 'none' });
     check(r, { 'segment 200': (res) => res.status === 200 });
     sleep(SEGMENT_DURATION_SEC - 1.5);
   }

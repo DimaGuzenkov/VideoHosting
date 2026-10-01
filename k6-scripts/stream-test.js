@@ -32,7 +32,7 @@ export const options = {
 const BASE_URL = 'http://api-gateway:8080';
 const USER = 'admin';
 const PASS = '123456';
-const VIDEO_ID = 34;
+const VIDEO_ID = 231;
 
 // Сколько сегментов «смотрит» один зритель за одну итерацию
 // 33 сегмента × ~9 сек = ~5 минут просмотра
@@ -41,7 +41,7 @@ const SEGMENT_DURATION_SEC = 9.2;
 
 // Заменяем localhost:9000 на адрес nginx-кэша внутри Docker
 function fixUrl(url) {
-  return url.replace('localhost:9000', 'minio-cache:8080');
+  return url.replace('localhost:9000', 'minio-cache:9000');
 }
 
 // Собираем абсолютный URL из относительного
@@ -106,7 +106,7 @@ export default function (data) {
   // 3. Ищем вариант 720p. Если нет — берём первый попавшийся
   let variantUrl = null;
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('RESOLUTION=1960x1080')) {
+    if (lines[i].includes('RESOLUTION=1280x720')) {
       variantUrl = resolveUrl(masterUrl, lines[i + 1]);
       break;
     }

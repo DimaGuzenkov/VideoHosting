@@ -42,7 +42,7 @@ services:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
       MINIO_ENDPOINT: http://minio:9000
-      MINIO_PUBLIC_ENDPOINT: http://localhost:9000
+      MINIO_PUBLIC_ENDPOINT: http://minio:9000
       MINIO_API_CORS_ALLOW_ORIGIN: "*"
     ports:
       - "9001:9001"   # Web Console

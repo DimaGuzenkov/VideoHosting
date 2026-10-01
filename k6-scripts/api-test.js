@@ -1,5 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import { BASE_URL, loginAndGetToken, fetchReadyVideoIds } from './config.js';
 
 export const options = {
   discardResponseBodies: true,
@@ -7,19 +8,15 @@ export const options = {
     browse: {
       executor: 'ramping-vus',
       startVUs: 0,
-        stages: [
-//          { duration: '1m', target: 200 },
-//          { duration: '2m', target: 200 },
-//          { duration: '1m', target: 400 },
-//          { duration: '2m', target: 400 },
-//          { duration: '1m', target: 600 },
-//          { duration: '2m', target: 600 },
-          { duration: '1m', target: 800 },
-          { duration: '2m', target: 800 },
-          { duration: '1m', target: 1000 },
-          { duration: '2m', target: 1000 },
-          { duration: '1m', target: 0 },
-        ],
+      stages: [
+        { duration: '2m', target: 500 },
+        { duration: '3m', target: 1000 },
+        { duration: '2m', target: 1500 },
+        { duration: '3m', target: 1500 },
+        { duration: '2m', target: 2000 },
+        { duration: '3m', target: 2000 },
+        { duration: '1m', target: 0 },
+      ],
       gracefulRampDown: '30s',
     },
   },
@@ -29,21 +26,10 @@ export const options = {
   },
 };
 
-const BASE_URL = 'http://api-gateway:8080';
-const USER = 'admin';
-const PASS = '123456';
-
-const VIDEO_IDS = [34, 35, 36, 37, 38, 39, 40, 41, 42, 49];
-
 export function setup() {
-  const login = http.post(
-    `${BASE_URL}/api/auth/login`,
-    JSON.stringify({ username: USER, password: PASS }),
-    { headers: { 'Content-Type': 'application/json' }, responseType: 'text' }
-  );
-  const token = login.json('token') || login.json('accessToken') || login.json('jwt');
-  if (!token) throw new Error('No token: ' + login.body);
-  return { token };
+  const token = loginAndGetToken(http);
+  const videoIds = fetchReadyVideoIds(http, token);
+  return { token, videoIds };
 }
 
 export default function (data) {
@@ -56,8 +42,8 @@ export default function (data) {
   const list = http.get(`${BASE_URL}/api/videos`, headers);
   check(list, { 'list 200': (r) => r.status === 200 });
 
-  // 2. URL плейлиста для случайного видео
-  const videoId = VIDEO_IDS[Math.floor(Math.random() * VIDEO_IDS.length)];
+  // 2. URL плейлиста для случайного готового видео
+  const videoId = data.videoIds[Math.floor(Math.random() * data.videoIds.length)];
   const playlist = http.get(`${BASE_URL}/api/stream/${videoId}/playlist-url`, headers);
   check(playlist, { 'playlist-url 200': (r) => r.status === 200 });
 
