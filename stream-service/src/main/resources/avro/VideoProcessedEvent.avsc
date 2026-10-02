@@ -1,0 +1,11 @@
+{
+  "type": "record",
+  "name": "VideoProcessedEvent",
+  "namespace": "com.example.avro",
+  "fields": [
+    { "name": "videoId", "type": "long" },
+    { "name": "userId", "type": "long", "default": 0 },
+    { "name": "status", "type": "string" },
+    { "name": "playlistPath", "type": ["null", "string"], "default": null }
+  ]
+}

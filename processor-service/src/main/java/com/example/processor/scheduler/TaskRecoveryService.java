@@ -1,5 +1,6 @@
-package com.example.processor.processing;
+package com.example.processor.scheduler;
 
+import com.example.processor.processing.ProcessingTaskRegistry;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

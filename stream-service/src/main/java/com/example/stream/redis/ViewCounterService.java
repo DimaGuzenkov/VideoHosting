@@ -1,4 +1,4 @@
-package com.example.stream.service;
+package com.example.stream.redis;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;

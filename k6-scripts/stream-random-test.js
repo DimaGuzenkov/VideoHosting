@@ -1,6 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { BASE_URL, resolveUrl, loginAndGetToken, fetchReadyVideoIds, fixUrl } from './config.js';
+import { BASE_URL, resolveUrl, loginAndGetToken, fetchReadyVideoIds, fixUrl, pickVariantUrl } from './config.js';
 
 export const options = {
   discardResponseBodies: true,
@@ -9,10 +9,13 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '2m', target: 500 },
-        { duration: '3m', target: 500 },
         { duration: '2m', target: 1000 },
-        { duration: '3m', target: 1000 },
+        { duration: '2m', target: 2000 },
+        { duration: '2m', target: 3000 },
+        { duration: '3m', target: 3500 },
+        { duration: '2m', target: 4000 },
+        { duration: '3m', target: 4500 },
+        { duration: '3m', target: 5000 },
         { duration: '1m', target: 0 },
       ],
       gracefulRampDown: '30s',
@@ -37,36 +40,21 @@ export default function (data) {
   const headers = { headers: { Authorization: `Bearer ${data.token}` } };
   const videoId = data.videoIds[Math.floor(Math.random() * data.videoIds.length)];
 
-  // 1. URL манифеста
   const playlistRes = http.get(
     `${BASE_URL}/api/stream/${videoId}/playlist-url`,
-    { ...headers, responseType: 'text' }
+    { ...headers, responseType: 'text', tags: { name: 'playlist-url' } }
   );
   if (playlistRes.status !== 200) { sleep(1); return; }
   const masterUrl = fixUrl(playlistRes.json('playlistUrl'));
 
-  // 2. Master playlist
-  const master = http.get(masterUrl, { responseType: 'text' });
+  const master = http.get(masterUrl, { responseType: 'text', tags: { name: 'master' } });
   if (master.status !== 200) { sleep(1); return; }
 
-  // 3. Вариант 720p (с fallback на первый)
-  const lines = master.body.split('\n').map((l) => l.trim()).filter((l) => l);
-  let variantUrl = null;
-  for (let i = 0; i < lines.length; i++) {
-    if (lines[i].includes('RESOLUTION=1280x720')) {
-      variantUrl = resolveUrl(masterUrl, lines[i + 1]);
-      break;
-    }
-  }
-  if (!variantUrl) {
-    const variantLine = lines.find((l, i) => lines[i - 1]?.startsWith('#EXT-X-STREAM-INF'));
-    variantUrl = variantLine ? resolveUrl(masterUrl, variantLine) : masterUrl;
-  }
+  const variantUrl = pickVariantUrl(master.body, masterUrl);
 
-  const variant = http.get(variantUrl, { responseType: 'text' });
+  const variant = http.get(variantUrl, { responseType: 'text', tags: { name: 'variant' } });
   if (variant.status !== 200) { sleep(1); return; }
 
-  // 4. Сегменты
   const baseDir = variantUrl.substring(0, variantUrl.lastIndexOf('/') + 1);
   const segments = variant.body
     .split('\n')
@@ -75,8 +63,11 @@ export default function (data) {
     .slice(0, SEGMENTS_PER_VIEW);
 
   for (const seg of segments) {
-    const r = http.get(resolveUrl(baseDir, seg), { responseType: 'none' });
+    const r = http.get(resolveUrl(baseDir, seg), {
+      responseType: 'none',
+      tags: { name: 'segment' },
+    });
     check(r, { 'segment 200': (res) => res.status === 200 });
-    sleep(SEGMENT_DURATION_SEC - 1.5);
+    sleep(SEGMENT_DURATION_SEC);
   }
 }

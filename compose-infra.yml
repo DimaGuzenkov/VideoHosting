@@ -1,20 +1,41 @@
 services:
-  postgres:
+  postgres-auth:
     image: postgres:16-alpine
-    container_name: video-postgres
+    container_name: video-postgres-auth
     environment:
-      POSTGRES_DB: videodb
-      POSTGRES_USER: video_user
-      POSTGRES_PASSWORD: video_pass
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: auth_pass
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_auth_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U video_user -d videodb"]
+      test: [ "CMD-SHELL", "pg_isready -U auth_user -d auth_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  postgres-video:
+    image: postgres:16-alpine
+    container_name: video-postgres-video
+    environment:
+      POSTGRES_DB: video_db
+      POSTGRES_USER: video_user
+      POSTGRES_PASSWORD: video_pass
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_video_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U video_user -d video_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
 
   postgres-processor:
     image: postgres:16-alpine
@@ -93,6 +114,7 @@ services:
     environment:
       KAFKA_PROCESS_ROLES: broker,controller
       KAFKA_NODE_ID: 1
+      KAFKA_NUM_PARTITIONS: 6
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
@@ -127,7 +149,8 @@ services:
       - kafka
 
 volumes:
-  postgres_data:
+  postgres_auth_data:
+  postgres_video_data:
   postgres_processor_data:
   minio_data:
   nginx_cache_data:

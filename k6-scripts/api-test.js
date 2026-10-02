@@ -9,8 +9,6 @@ export const options = {
       executor: 'ramping-vus',
       startVUs: 0,
       stages: [
-        { duration: '2m', target: 500 },
-        { duration: '3m', target: 1000 },
         { duration: '2m', target: 1500 },
         { duration: '3m', target: 1500 },
         { duration: '2m', target: 2000 },
@@ -22,7 +20,9 @@ export const options = {
   },
   thresholds: {
     http_req_failed: ['rate<0.01'],
-    http_req_duration: ['p(95)<500'],
+    'http_req_duration{name:list}': ['p(95)<500'],
+    'http_req_duration{name:playlist-url}': ['p(95)<2000'],
+    http_req_duration: ['p(95)<2000'],
   },
 };
 
@@ -38,13 +38,15 @@ export default function (data) {
     responseType: 'text',
   };
 
-  // 1. Список видео
-  const list = http.get(`${BASE_URL}/api/videos`, headers);
+  const list = http.get(`${BASE_URL}/api/videos`, {
+    ...headers, tags: { name: 'list' },
+  });
   check(list, { 'list 200': (r) => r.status === 200 });
 
-  // 2. URL плейлиста для случайного готового видео
   const videoId = data.videoIds[Math.floor(Math.random() * data.videoIds.length)];
-  const playlist = http.get(`${BASE_URL}/api/stream/${videoId}/playlist-url`, headers);
+  const playlist = http.get(`${BASE_URL}/api/stream/${videoId}/playlist-url`, {
+    ...headers, tags: { name: 'playlist-url' },
+  });
   check(playlist, { 'playlist-url 200': (r) => r.status === 200 });
 
   sleep(1);

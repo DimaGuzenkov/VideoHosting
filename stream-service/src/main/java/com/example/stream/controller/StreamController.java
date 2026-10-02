@@ -4,7 +4,7 @@ import com.example.stream.model.Video;
 import com.example.stream.model.VideoStatus;
 import com.example.stream.service.StorageService;
 import com.example.stream.service.VideoService;
-import com.example.stream.service.ViewCounterService;
+import com.example.stream.redis.ViewCounterService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -18,17 +18,12 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class StreamController {
-
     private final VideoService videoService;
     private final StorageService storageService;
     private final ViewCounterService viewCounterService;
 
-    private static final int URL_EXPIRY_SECONDS = 3600;
-
     @GetMapping("/{videoId}/playlist-url")
     public ResponseEntity<?> getPlaylistUrl(@PathVariable Long videoId) {
-//        log.info("Request for playlist URL, videoId: {}", videoId);
-
         Video video = videoService.getVideoById(videoId);
         if (video.getStatus() != VideoStatus.READY) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
