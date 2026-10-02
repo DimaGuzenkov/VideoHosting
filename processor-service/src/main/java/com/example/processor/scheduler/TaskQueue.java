@@ -31,4 +31,9 @@ public class TaskQueue {
 
     public void signalAll() { available.signalAll(); }
     public void await() throws InterruptedException { available.await(); }
+
+    public void removeByVideoId(Long videoId) {
+        fast.removeIf(t -> videoId.equals(t.event().getVideoId()));
+        slow.removeIf(t -> videoId.equals(t.event().getVideoId()));
+    }
 }

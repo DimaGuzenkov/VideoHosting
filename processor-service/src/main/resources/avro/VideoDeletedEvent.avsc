@@ -1,0 +1,8 @@
+{
+  "type": "record",
+  "name": "VideoDeletedEvent",
+  "namespace": "com.example.avro",
+  "fields": [
+    { "name": "videoId", "type": "long" }
+  ]
+}

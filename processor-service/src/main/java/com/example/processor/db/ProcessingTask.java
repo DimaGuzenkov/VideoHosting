@@ -7,8 +7,15 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "video_processing_tasks",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"video_id", "quality"}))
+@Table(
+        name = "video_processing_tasks",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"video_id", "quality"}),
+        indexes = {
+                @Index(name = "idx_status_heartbeat", columnList = "status, heartbeat_at"),
+                @Index(name = "idx_status_quality", columnList = "status, quality"),
+                @Index(name = "idx_video_id", columnList = "video_id")
+        }
+)
 @Data
 @Builder
 @NoArgsConstructor
@@ -35,8 +42,17 @@ public class ProcessingTask {
     @Column(name = "file_path", length = 512)
     private String filePath;
 
+    @Column(name = "worker_id", length = 64)
+    private String workerId;
+
+    @Column(name = "created_at")
+    private LocalDateTime createdAt;
+
     @Column(name = "started_at")
     private LocalDateTime startedAt;
+
+    @Column(name = "heartbeat_at")
+    private LocalDateTime heartbeatAt;
 
     @Column(name = "finished_at")
     private LocalDateTime finishedAt;

@@ -1,18 +1,22 @@
 package com.example.uploadvideo.db;
 
 import com.example.avro.VideoUploadedEvent;
+import com.example.avro.VideoDeletedEvent;
 import com.example.uploadvideo.kafka.EventPublisher;
 import com.example.uploadvideo.db.model.Video;
 import com.example.uploadvideo.db.model.VideoStatus;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class VideoService {
 
     private final VideoRepository videoRepository;
@@ -59,7 +63,13 @@ public class VideoService {
 
     @Transactional
     public void updateStatusAndPlaylist(Long videoId, VideoStatus status, String playlistPath) {
-        Video video = getVideoById(videoId);
+        Optional<Video> videoOpt = videoRepository.findById(videoId);
+        if (videoOpt.isEmpty()) {
+            log.info("⏭ Video {} not found, skip status update (probably deleted)", videoId);
+            return;
+        }
+
+        Video video = videoOpt.get();
         video.setStatus(status);
         video.setPlaylistPath(playlistPath);
         video.setUpdatedAt(LocalDateTime.now());
@@ -69,5 +79,6 @@ public class VideoService {
     @Transactional
     public void deleteVideo(Long id) {
         videoRepository.deleteById(id);
+        eventPublisher.publishVideoDeleted(new VideoDeletedEvent(id));
     }
 }
